@@ -14,7 +14,7 @@ class Brother(
     @Column(name = "full_name", nullable = false, length = 200) @NotNull
     var fullName: String,
     @Column(name = "can_strike", nullable = false, length = 1) @NotNull
-    var canStrike: Int,
-    @Column(name = "strikes", nullable = false)
+    var canStrike: Boolean,
+    @Column(name = "strikes")
     var strikes: Int
 )
