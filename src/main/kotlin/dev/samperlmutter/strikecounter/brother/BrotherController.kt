@@ -1,6 +1,5 @@
 package dev.samperlmutter.strikecounter.brother
 
-import com.fasterxml.jackson.databind.JsonNode
 import dev.samperlmutter.strikecounter.slack.SlackSlashCommand
 import net.minidev.json.JSONObject
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,67 +22,87 @@ class BrotherController() {
         this.restTemplateBuilder = restTemplateBuilder
     }
 
-    @RequestMapping(method = [RequestMethod.POST], value = ["/strikes"])
-    fun cmdHandler(keyVals: HashMap<String, Any>) {
-        val brother = brotherRepository.findBySlackId(keyVals["user_id"] as String)
-        val params = (keyVals["text"] as String).split(' ')
-        val url = keyVals["response_url"] as String
+    @RequestMapping(method = [RequestMethod.POST], value = ["/strikes"], consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE])
+    fun cmdHandler(body: SlackSlashCommand): ResponseEntity<Any> {
+        val caller = brotherRepository.findBySlackId(parseUser(body.user_id))
+        val params = body.text.split(' ')
+        val url = body.response_url
+        val regex = "(?<=@)([A-Z0-9])\\w+(?=\\||>)".toRegex()
 
-        when (keyVals["command"]) {
-            "/stroke" -> strike(brother, params, url)
-            "/unstroke" -> unstrike(brother, params, url)
-            "/strokes" -> strikes(url)
+
+        when (params[0]) {
+            "add" -> addStrike(caller, params.subList(1, params.size), url)
+            "remove" -> removeStrike(caller, params.subList(1, params.size), url)
+            "list" -> listStrikes(url)
+            else -> {
+
+            }
         }
+
+        return ResponseEntity.ok().build()
     }
 
     @RequestMapping(method = [RequestMethod.POST], value = ["/test"], consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE])
     fun test(body: SlackSlashCommand): ResponseEntity<Any> {
         println(body.text)
+        sendMessage(body.response_url, "you got it")
         return ResponseEntity.ok().body(body)
     }
 
-    private fun strike(caller: Brother, params: List<String>, url: String) {
+    private fun addStrike(caller: Brother, params: List<String>, url: String) {
         if (caller.canStrike) {
-            var brothers = Array(params.size) { i -> brotherRepository.findBySlackId(params[i])}
+            var message = ""
             for (param in params) {
                 var brother = brotherRepository.findBySlackId(param)
                 brother.strikes++
                 brotherRepository.save(brother)
+                message += "${brother.name.capitalize()} has now been stroked ${brother.strikes} times\n"
             }
-            // TODO: return a happy message
-            respond(url, "${brothers[0].fullName} has ${brothers[0].strikes} strikes.")
+            sendMessage(url, message.trimMargin())
         } else {
-            // TODO: inform user they don't have access
+            sendMessage(url, "Sorry, you're not allowed to stroke other brothers")
         }
     }
 
-    private fun unstrike(caller: Brother, params: List<String>, url: String) {
+    private fun removeStrike(caller: Brother, params: List<String>, url: String) {
         if (caller.canStrike) {
+            var message = ""
             for (param in params) {
                 var brother = brotherRepository.findBySlackId(param)
                 brother.strikes--
                 brotherRepository.save(brother)
+                message += "${brother.name.capitalize()} has now only been stroked ${brother.strikes} times\n"
             }
-            // TODO: return a happy message
+            sendMessage(url, message.trimMargin())
         } else {
-            // TODO: inform user they don't have access
+            sendMessage(url, "Sorry, you're not allowed to stroke other brothers")
         }
     }
 
-    private fun strikes(url: String) {
-        val brothers = brotherRepository.findAll()
-        // TODO: return info
+    private fun listStrikes(url: String) {
+        var message = ""
+        for (brother in brotherRepository.findAll()) {
+            message += "${brother.name.capitalize()} has now only been stroked ${brother.strikes} times\n"
+        }
+        sendMessage(url, message.trimMargin())
     }
 
-    private fun respond(url: String, message: String) {
+    private fun sendMessage(url: String, message: String, ephemeral: Boolean = false) {
         val restTemplate = RestTemplate()
         val headers = HttpHeaders()
         headers.contentType = MediaType.APPLICATION_JSON
         var map = HashMap<String, String>()
         map.put("text", message)
+        map.put("response_type", "ephemeral")
         val json = JSONObject(map)
 
         val request = HttpEntity(json.toString(), headers)
-        val result = restTemplate.postForObject(url, request, String::class.java)
+
+        restTemplate.postForObject(url, request, String::class.java)
+    }
+
+    private fun parseUser(user: String): String {
+        val regex = "(?<=@)([A-Z0-9])\\w+(?=\\||>)".toRegex()
+        return regex.find(user)!!.value
     }
 }
