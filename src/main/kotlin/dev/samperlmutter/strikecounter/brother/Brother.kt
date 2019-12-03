@@ -1,9 +1,6 @@
 package dev.samperlmutter.strikecounter.brother
 
-import javax.persistence.Column
-import javax.persistence.Entity
-import javax.persistence.Id
-import javax.persistence.Table
+import javax.persistence.*
 import javax.validation.constraints.NotNull
 
 @Entity
@@ -11,10 +8,12 @@ import javax.validation.constraints.NotNull
 class Brother(
     @Id @Column(name = "id", nullable = false, length = 200) @NotNull
     var slackId: String,
-    @Column(name = "full_name", nullable = false, length = 200) @NotNull
-    var fullName: String,
+    @Column(name = "name", nullable = false, length = 200) @NotNull
+    var name: String,
     @Column(name = "can_strike", nullable = false, length = 1) @NotNull
-    var canStrike: Boolean,
-    @Column(name = "strikes")
-    var strikes: Int
+    var canAct: Boolean,
+    @Column(name = "strikes", nullable = false) @NotNull
+    var strikes: Int,
+    @Column(name = "points", nullable = false) @NotNull
+    var points: Int
 )
