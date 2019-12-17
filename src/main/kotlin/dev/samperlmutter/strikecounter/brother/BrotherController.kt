@@ -3,6 +3,7 @@ package dev.samperlmutter.strikecounter.brother
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import dev.samperlmutter.strikecounter.slack.SlackSlashCommand
+import org.apache.coyote.Response
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -27,6 +28,7 @@ class BrotherController @Autowired constructor(
             "add" -> addStrike(caller, params.subList(1, params.size))
             "remove" -> removeStrike(caller, params.subList(1, params.size))
             "list" -> listStrikes()
+            "reset" -> resetStrikes(caller)
             else -> strikesHelp()
         }
     }
@@ -118,21 +120,37 @@ class BrotherController @Autowired constructor(
         return ResponseEntity.ok(buildResponse(message.trimMargin()))
     }
 
+    private fun resetStrikes(caller: Brother): ResponseEntity<Any> {
+        return if (caller.canReset) {
+            for (brother in brotherRepository.findAll()) {
+                brother.strikes = 0
+                brotherRepository.save(brother)
+            }
+            ResponseEntity.ok(buildResponse("Strikes have now been reset"))
+        } else {
+            ResponseEntity.ok(buildResponse("Sorry, you're not allowed to reset strikes"))
+        }
+    }
+
     private fun strikesHelp(): ResponseEntity<Any> {
         val message = """
             *Available commands*:
             >*Add a strike*
-            >type `/strike add @{name1} @{name2} ...` to add a strike to each user listed
-            
+            >Type `/strikes add @{name1} @{name2} ...` to add a strike to each user listed
+
             >*Remove a strike*
-            >type `/strike remove @{name1} @{name2} ...` to remove a strike from each user listed
-            
+            >Type `/strikes remove @{name1} @{name2} ...` to remove a strike from each user listed
+
             >*List everyone's strikes*
-            >type `/strike list [alpha | num]` to list how many strikes each user has, sorted alphabetically or numerically.
+            >Type `/strikes list [alpha | num]` to list how many strikes each user has, sorted alphabetically or numerically
             >Sorts numerically by default
-            
+
+            >*Reset strikes*
+            >Type `/strikes reset` to reset everyone's strikes to 0
+            >This should only be done at the end of the semester
+
             >*Help*
-            >type `/strike help` to display this message
+            >Type `/strikes help` to display this message
         """.trimIndent()
 
         return ResponseEntity.ok(buildResponse(message.trimMargin()))
@@ -142,17 +160,17 @@ class BrotherController @Autowired constructor(
         val message = """
             *Available commands*:
             >*Add points*
-            >type `/points add @{user} {number}` to add {number} points to {user}
-            
+            >Type `/points add @{user} {number}` to add {number} points to {user}
+
             >*Remove points*
-            >type `/points remove @{user} {number}` to remove {number} points from {user}
-            
+            >Type `/points remove @{user} {number}` to remove {number} points from {user}
+
             >*List everyone's points*
-            >type `/points list [alpha | num]` to list how many points each user has, sorted alphabetically or numerically.
+            >Type `/points list [alpha | num]` to list how many points each user has, sorted alphabetically or numerically
             >Sorts numerically by default
-            
+
             >*Help*
-            >type `/points help` to display this message
+            >Type `/points help` to display this message
         """.trimIndent()
 
         return ResponseEntity.ok(buildResponse(message.trimMargin()))

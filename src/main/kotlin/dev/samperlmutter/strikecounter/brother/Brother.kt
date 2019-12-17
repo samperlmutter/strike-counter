@@ -10,8 +10,10 @@ class Brother(
     var slackId: String,
     @Column(name = "name", nullable = false, length = 200) @NotNull
     var name: String,
-    @Column(name = "can_strike", nullable = false, length = 1) @NotNull
+    @Column(name = "can_strike", columnDefinition = "TINYINT(1) NOT NULL DEFAULT '0'") @NotNull
     var canAct: Boolean,
+    @Column(name = "can_reset", columnDefinition = "TINYINT(1) NOT NULL DEFAULT '0'") @NotNull
+    var canReset: Boolean,
     @Column(name = "strikes", nullable = false) @NotNull
     var strikes: Int,
     @Column(name = "points", nullable = false) @NotNull
