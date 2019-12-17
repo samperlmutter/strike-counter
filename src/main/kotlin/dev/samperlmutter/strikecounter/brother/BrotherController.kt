@@ -55,11 +55,11 @@ class BrotherController @Autowired constructor(
                 var brother = brotherRepository.findBySlackId(parseUser(param))
                 brother.strikes++
                 brotherRepository.save(brother)
-                message += "${brother.name.capitalize()} has now been stroked ${brother.strikes} time${if (brother.strikes == 1) "" else "s"}\n"
+                message += "${brother.name.capitalize()} now has ${brother.strikes} strike${if (brother.strikes == 1) "" else "s"}\n"
             }
             ResponseEntity.ok(buildResponse(message.trimMargin()))
         } else {
-            ResponseEntity.ok(buildResponse("Sorry, you're not allowed to stroke other brothers"))
+            ResponseEntity.ok(buildResponse("Sorry, you're not allowed to strike other brothers"))
         }
     }
 
@@ -82,11 +82,11 @@ class BrotherController @Autowired constructor(
                 var brother = brotherRepository.findBySlackId(parseUser(param))
                 brother.strikes -= if (brother.strikes < 1) 0 else 1
                 brotherRepository.save(brother)
-                message += "${brother.name.capitalize()} has now only been stroked ${brother.strikes} time${if (brother.strikes == 1) "" else "s"}\n"
+                message += "${brother.name.capitalize()} now has ${brother.strikes} strike${if (brother.strikes == 1) "" else "s"}\n"
             }
             ResponseEntity.ok(buildResponse(message.trimMargin()))
         } else {
-            ResponseEntity.ok(buildResponse("Sorry, you're not allowed to stroke other brothers"))
+            ResponseEntity.ok(buildResponse("Sorry, you're not allowed to strike other brothers"))
         }
     }
 
@@ -105,7 +105,7 @@ class BrotherController @Autowired constructor(
     private fun listStrikes(): ResponseEntity<Any> {
         var message = ""
         for (brother in brotherRepository.findAll().sortedWith(compareBy({ -it.strikes }, { it.name }))) {
-            message += "• ${brother.name.capitalize()} has been stroked ${brother.strikes} time${if (brother.strikes == 1) "" else "s"}\n"
+            message += "• ${brother.name.capitalize()} has ${brother.strikes} strike${if (brother.strikes == 1) "" else "s"}\n"
         }
         return ResponseEntity.ok(buildResponse(message.trimMargin()))
     }
@@ -121,18 +121,18 @@ class BrotherController @Autowired constructor(
     private fun strikesHelp(): ResponseEntity<Any> {
         val message = """
             *Available commands*:
-            >*Stroke a user*
-            >type `/stroke add @{name1} @{name2} ...` to stroke each user listed
+            >*Add a strike*
+            >type `/strike add @{name1} @{name2} ...` to add a strike to each user listed
             
-            >*Unstroke a user*
-            >type `/stroke remove @{name1} @{name2} ...` to unstroke each user listed
+            >*Remove a strike*
+            >type `/strike remove @{name1} @{name2} ...` to remove a strike from each user listed
             
-            >*List everyone's strokes*
-            >type `/stroke list [alpha | num]` to list how many strokes each user has, sorted alphabetically or numerically.
+            >*List everyone's strikes*
+            >type `/strike list [alpha | num]` to list how many strikes each user has, sorted alphabetically or numerically.
             >Sorts numerically by default
             
             >*Help*
-            >type `/stroke help` to display this message
+            >type `/strike help` to display this message
         """.trimIndent()
 
         return ResponseEntity.ok(buildResponse(message.trimMargin()))
