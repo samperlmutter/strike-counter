@@ -7,11 +7,13 @@ import dev.samperlmutter.strikecounter.slack.SlackSlashCommand
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
+import java.lang.IllegalArgumentException
 
 @Service
 class StrikeService @Autowired constructor(
     private val slackService: SlackService,
-    private val brotherRepository: BrotherRepository
+    private val brotherRepository: BrotherRepository,
+    private val strikeRepository: StrikeRepository
 ) {
     fun strikesHandler(body: SlackSlashCommand): ResponseEntity<Any> {
         val caller = brotherRepository.findBySlackId(body.user_id)
@@ -20,74 +22,112 @@ class StrikeService @Autowired constructor(
         return when (params[0]) {
             "add" -> addStrike(caller, params.subList(1, params.size))
             "remove" -> removeStrike(caller, params.subList(1, params.size))
-            "list" -> listStrikes()
+            "list" -> listStrikes(caller, params)
             "reset" -> resetStrikes(caller)
             else -> strikesHelp()
         }
     }
 
-    fun addStrike(caller: Brother, params: List<String>): ResponseEntity<Any> {
+    private fun addStrike(caller: Brother, params: List<String>): ResponseEntity<Any> {
+        return if (caller.canAct) {
+            return if (params.size >= 4) {
+                val brother = brotherRepository.findBySlackId(slackService.parseUser(params[0]))
+                val offense = try { Offense.valueOf(params[1].toUpperCase()) } catch (e: IllegalArgumentException) { return ResponseEntity.ok(slackService.buildResponse("Invalid offense. Valid options are `tardy` and `absent`")) }
+                val excusability = try { Excusability.valueOf(params[2].toUpperCase()) } catch (e: IllegalArgumentException) { return ResponseEntity.ok(slackService.buildResponse("Invalid excuse. Valid options are `excused` and `unexcused`")) }
+                val reason = params.subList(3, params.size).joinToString(" ")
+
+                val strike = Strike(
+                    brother = brother,
+                    offense = offense,
+                    excusability = excusability,
+                    reason = reason
+                )
+
+                strikeRepository.save(strike)
+
+                val strikes = strikeRepository.findAllByBrother(brother)
+                val message = "${brother.name.capitalize()} now has ${strikes.size} strike${if (strikes.size == 1) "" else "s"}\n"
+                ResponseEntity.ok(slackService.buildResponse(message.trimMargin()))
+            } else {
+                ResponseEntity.ok(slackService.buildResponse("Invalid number of arguments"))
+            }
+        } else {
+            ResponseEntity.ok(slackService.buildResponse("Sorry, you're not allowed to manage strikes"))
+        }
+    }
+
+    private fun removeStrike(caller: Brother, params: List<String>): ResponseEntity<Any> {
+        return if (caller.canAct) {
+            return if (params.size == 2) {
+                val brother = brotherRepository.findBySlackId(slackService.parseUser(params[0]))
+                val strikeId = params[1].toInt()
+                val strikes = strikeRepository.findAllByBrother(brother)
+                if (strikeId < 1 || strikeId > strikes.size) {
+                    return ResponseEntity.ok(slackService.buildResponse("Invalid strike identifier"))
+                }
+                val strike = strikeRepository.findAllByBrother(brother)[strikeId - 1]
+                strikeRepository.delete(strike)
+                ResponseEntity.ok(slackService.buildResponse("${brother.name} now has ${strikes.size - 1} strike${if (strikes.size == 1) "" else "s"}"))
+            } else {
+                ResponseEntity.ok(slackService.buildResponse("Invalid number of arguments"))
+            }
+        } else {
+            ResponseEntity.ok(slackService.buildResponse("Sorry, you're not allowed to manage strikes"))
+        }
+    }
+
+    private fun listStrikes(caller: Brother, params: List<String>): ResponseEntity<Any> {
         return if (caller.canAct) {
             var message = ""
-            for (param in params) {
-                var brother = brotherRepository.findBySlackId(slackService.parseUser(param))
-                brother.strikes++
-                brotherRepository.save(brother)
-                message += "${brother.name.capitalize()} now has ${brother.strikes} strike${if (brother.strikes == 1) "" else "s"}\n"
+            return when {
+                params.size == 2 -> {
+                    val brother = brotherRepository.findBySlackId(slackService.parseUser(params[1]))
+                    val strikes = brother.strikes
+                    if (strikes.isNotEmpty()) {
+                        for (i in strikes.indices) {
+                            message += "${i + 1}. ${strikes[i]}\n"
+                        }
+                    } else {
+                        message = "${brother.name.capitalize()} has 0 strikes"
+                    }
+                    ResponseEntity.ok(slackService.buildResponse(message.trimMargin()))
+                }
+                params.size < 2 -> {
+                    for (brother in brotherRepository.findAll().sortedWith(compareBy({ -it.strikes.size }, { it.name }))) {
+                        message += "• ${brother.name.capitalize()} has ${brother.strikes.size} strike${if (brother.strikes.size == 1) "" else "s"}\n"
+                    }
+                    ResponseEntity.ok(slackService.buildResponse(message.trimMargin()))
+                }
+                else -> {
+                    ResponseEntity.ok(slackService.buildResponse("Invalid number of arguments"))
+                }
             }
-            ResponseEntity.ok(slackService.buildResponse(message.trimMargin()))
         } else {
-            ResponseEntity.ok(slackService.buildResponse("Sorry, you're not allowed to strike other brothers"))
+            ResponseEntity.ok(slackService.buildResponse("Sorry, you're not allowed to manage strikes"))
         }
     }
 
-    fun removeStrike(caller: Brother, params: List<String>): ResponseEntity<Any> {
-        return if (caller.canAct) {
-            var message = ""
-            for (param in params) {
-                var brother = brotherRepository.findBySlackId(slackService.parseUser(param))
-                brother.strikes -= if (brother.strikes < 1) 0 else 1
-                brotherRepository.save(brother)
-                message += "${brother.name.capitalize()} now has ${brother.strikes} strike${if (brother.strikes == 1) "" else "s"}\n"
-            }
-            ResponseEntity.ok(slackService.buildResponse(message.trimMargin()))
-        } else {
-            ResponseEntity.ok(slackService.buildResponse("Sorry, you're not allowed to strike other brothers"))
-        }
-    }
-
-    fun listStrikes(): ResponseEntity<Any> {
-        var message = ""
-        for (brother in brotherRepository.findAll().sortedWith(compareBy({ -it.strikes }, { it.name }))) {
-            message += "• ${brother.name.capitalize()} has ${brother.strikes} strike${if (brother.strikes == 1) "" else "s"}\n"
-        }
-        return ResponseEntity.ok(slackService.buildResponse(message.trimMargin()))
-    }
-
-    fun resetStrikes(caller: Brother): ResponseEntity<Any> {
+    private fun resetStrikes(caller: Brother): ResponseEntity<Any> {
         return if (caller.canReset) {
-            for (brother in brotherRepository.findAll()) {
-                brother.strikes = 0
-                brotherRepository.save(brother)
-            }
+            strikeRepository.deleteAll()
             ResponseEntity.ok(slackService.buildResponse("Strikes have now been reset"))
         } else {
-            ResponseEntity.ok(slackService.buildResponse("Sorry, you're not allowed to reset strikes"))
+            ResponseEntity.ok(slackService.buildResponse("Sorry, you're not allowed to manage strikes"))
         }
     }
 
-    fun strikesHelp(): ResponseEntity<Any> {
+    private fun strikesHelp(): ResponseEntity<Any> {
         val message = """
             *Available commands*:
             >*Add a strike*
-            >Type `/strikes add @{name1} @{name2} ...` to add a strike to each user listed
+            >Type `/strikes add @{name} {tardy | absent} {excused | unexcused} {reason}` to add a strike to the specified user
 
             >*Remove a strike*
-            >Type `/strikes remove @{name1} @{name2} ...` to remove a strike from each user listed
+            >Type `/strikes remove @{name} {strikeNumber}` to remove the specified strike from the specified
 
             >*List everyone's strikes*
-            >Type `/strikes list [alpha | num]` to list how many strikes each user has, sorted alphabetically or numerically
-            >Sorts numerically by default
+            >Type `/strikes list [@{name}]` to list how many strikes each user has, sorted numerically
+            >Optionally mention a user to list information about their strikes
 
             >*Reset strikes*
             >Type `/strikes reset` to reset everyone's strikes to 0

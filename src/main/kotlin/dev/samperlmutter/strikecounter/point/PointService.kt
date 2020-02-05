@@ -18,16 +18,8 @@ class PointService @Autowired constructor(
         val params = body.text.split(' ')
 
         return when (params[0]) {
-            "add" -> addPoints(
-                caller,
-                brotherRepository.findBySlackId(slackService.parseUser(params[1])),
-                params[2].toInt()
-            )
-            "remove" -> removePoints(
-                caller,
-                brotherRepository.findBySlackId(slackService.parseUser(params[1])),
-                params[2].toInt()
-            )
+            "add" -> addPoints(caller, brotherRepository.findBySlackId(slackService.parseUser(params[1])), params[2].toInt())
+            "remove" -> removePoints(caller, brotherRepository.findBySlackId(slackService.parseUser(params[1])), params[2].toInt())
             "list" -> listPoints()
             else -> pointsHelp()
         }
@@ -36,7 +28,7 @@ class PointService @Autowired constructor(
     fun addPoints(caller: Brother, brother: Brother, points: Int): ResponseEntity<Any> {
         return if (caller.canAct) {
             var message = ""
-            brother.points += points
+            brother.points = brother.points.plus(points)
             brotherRepository.save(brother)
             message += "${brother.name.capitalize()} now has ${brother.points} point${if (brother.points == 1) "" else "s"}\n"
             ResponseEntity.ok(slackService.buildResponse(message.trimMargin()))

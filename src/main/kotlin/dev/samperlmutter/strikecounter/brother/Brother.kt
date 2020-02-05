@@ -1,21 +1,21 @@
 package dev.samperlmutter.strikecounter.brother
 
+import dev.samperlmutter.strikecounter.strike.Strike
 import javax.persistence.*
-import javax.validation.constraints.NotNull
 
 @Entity
 @Table(name = "brothers")
-class Brother(
-    @Id @Column(name = "id", nullable = false, length = 200) @NotNull
-    var slackId: String,
-    @Column(name = "name", nullable = false, length = 200) @NotNull
+data class Brother(
+    @Id @Column(name = "id", nullable = false, length = 200)
+    var slackId: String? = null,
+    @Column(name = "name", nullable = false, length = 200)
     var name: String,
-    @Column(name = "can_strike", columnDefinition = "TINYINT(1) NOT NULL DEFAULT '0'") @NotNull
+    @Column(name = "can_strike", columnDefinition = "TINYINT(1) NOT NULL DEFAULT '0'")
     var canAct: Boolean,
-    @Column(name = "can_reset", columnDefinition = "TINYINT(1) NOT NULL DEFAULT '0'") @NotNull
+    @Column(name = "can_reset", columnDefinition = "TINYINT(1) NOT NULL DEFAULT '0'")
     var canReset: Boolean,
-    @Column(name = "strikes", nullable = false) @NotNull
-    var strikes: Int,
-    @Column(name = "points", nullable = false) @NotNull
+    @OneToMany(fetch = FetchType.EAGER) @JoinColumn(name = "brother")
+    var strikes: List<Strike>,
+    @Column(name = "points", nullable = false)
     var points: Int
 )
