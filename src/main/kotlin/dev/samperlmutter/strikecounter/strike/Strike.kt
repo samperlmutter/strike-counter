@@ -18,7 +18,7 @@ data class Strike(
     var reason: String
 ) {
     override fun toString(): String {
-        return "${brother.name} has an ${excusability.toString().toLowerCase()} ${offense.toString().toLowerCase()} " +
-                "because they were $reason"
+        return "${brother.name} has an *${excusability.toString().toLowerCase()} ${offense.toString().toLowerCase()}* " +
+                "for reason: *$reason*"
     }
 }

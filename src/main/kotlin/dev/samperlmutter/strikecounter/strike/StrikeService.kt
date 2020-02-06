@@ -80,6 +80,7 @@ class StrikeService @Autowired constructor(
         return if (caller.canAct) {
             var message = ""
             return when {
+                // List strikes for specific brother
                 params.size == 2 -> {
                     val brother = brotherRepository.findBySlackId(slackService.parseUser(params[1]))
                     val strikes = brother.strikes
@@ -92,6 +93,7 @@ class StrikeService @Autowired constructor(
                     }
                     ResponseEntity.ok(slackService.buildResponse(message.trimMargin()))
                 }
+                // List number of strikes for everyone
                 params.size < 2 -> {
                     for (brother in brotherRepository.findAll().sortedWith(compareBy({ -it.strikes.size }, { it.name }))) {
                         message += "• ${brother.name.capitalize()} has ${brother.strikes.size} strike${if (brother.strikes.size == 1) "" else "s"}\n"
