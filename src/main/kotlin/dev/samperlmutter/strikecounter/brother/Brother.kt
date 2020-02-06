@@ -6,7 +6,7 @@ import javax.persistence.*
 @Entity
 @Table(name = "brothers")
 data class Brother(
-    @Id @Column(name = "id", nullable = false, length = 200)
+    @Id @Column(name = "id", nullable = false, length = 50)
     var slackId: String? = null,
     @Column(name = "name", nullable = false, length = 200)
     var name: String,
