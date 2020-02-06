@@ -10,10 +10,10 @@ data class Strike(
     var id: Int? = null,
     @JoinColumn(name = "brother", nullable = false, insertable = true, updatable = false) @ManyToOne()
     var brother: Brother,
-    @Enumerated @Column(name = "offense", nullable = false)
-    var offense: Offense,
     @Enumerated @Column(name = "excusability", nullable = false)
     var excusability: Excusability,
+    @Enumerated @Column(name = "offense", nullable = false)
+    var offense: Offense,
     @Column(name = "reason", nullable = false)
     var reason: String
 ) {
