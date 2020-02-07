@@ -47,3 +47,7 @@ tasks.withType<KotlinCompile> {
 		jvmTarget = "1.8"
 	}
 }
+
+task<Exec>("deploy") {
+	commandLine("./deploy.sh")
+}
