@@ -33,7 +33,7 @@ class StrikeService @Autowired constructor(
             return if (params.size >= 4) {
                 val brother = brotherRepository.findBySlackId(slackService.parseUser(params[0]))
                 val excusability = try { Excusability.valueOf(params[1].toUpperCase()) } catch (e: IllegalArgumentException) { return ResponseEntity.ok(slackService.buildResponse("Invalid excuse. Valid options are `excused` and `unexcused`")) }
-                val offense = try { Offense.valueOf(params[2].toUpperCase()) } catch (e: IllegalArgumentException) { return ResponseEntity.ok(slackService.buildResponse("Invalid offense. Valid options are `tardy` and `absent`")) }
+                val offense = try { Offense.valueOf(params[2].toUpperCase()) } catch (e: IllegalArgumentException) { return ResponseEntity.ok(slackService.buildResponse("Invalid offense. Valid options are `tardy` and `absence`")) }
                 val reason = params.subList(3, params.size).joinToString(" ")
 
                 val strike = Strike(
@@ -122,7 +122,7 @@ class StrikeService @Autowired constructor(
         val message = """
             *Available commands*:
             >*Add a strike*
-            >Type `/strikes add @{name} {excused | unexcused} {tardy | absent} {reason}` to add a strike to the specified user
+            >Type `/strikes add @{name} {excused | unexcused} {tardy | absence} {reason}` to add a strike to the specified user
 
             >*Remove a strike*
             >Type `/strikes remove @{name} {strikeNumber}` to remove the specified strike from the specified
